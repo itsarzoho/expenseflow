@@ -1,58 +1,49 @@
-# ExpenseFlow Pro - Money In + Out + Investments
-Generic Expense Tracker for 1000 users, ready for Play Store.
+# ExpenseFlow Pro - Final Updated Code for GitHub
 
-## Features
-- Money In (Salary, Freelance, Gift, etc) + Money Out (24 categories)
-- Investments: Gold, Bitcoin/Crypto, SIP, Stocks, FD, RD, Property
-- Future Plans: SIP calendar, FD/RD maturity tracker
-- Supabase backend with RLS, 1000 users scalable
-- GitHub + Vercel ready
+## What Changed in This Update?
+- ✅ 100% English (All Hindi removed)
+- ✅ Email Login + SignUp
+- ✅ Google Login (Continue with Google / Gmail Connect)
+- ✅ Forgot Password + Reset via Email
+- ✅ Supabase Auth (auth.users - no need to create id/password table)
+- ✅ Money In / Money Out
+- ✅ Investments: Gold, Bitcoin, SIP, Stocks, FD, RD (in premium file)
+- ✅ GitHub + Vercel Ready
+- ✅ Free for 1000 users
 
-## Setup - Supabase (2 min)
-1. supabase.com -> New Project
-2. SQL Editor -> Paste supabase.sql -> Run
-3. Auth -> Providers -> Enable Google + Email
-4. Settings -> API -> Copy URL + anon key
+## Files in This ZIP
+- index.html -> Main app (USE THIS FOR GITHUB - Login Fixed + Google + Forgot Password + English)
+- index-with-investments-premium.html -> Premium version with Investment + Future Plans tabs (React build)
+- supabase.sql -> Database schema (transactions + investments)
+- vercel.json -> Vercel config
+- .env.example -> Env template
+- README.md -> This guide
 
-## GitHub Setup (2 min)
-Option A - Website:
-1. github.com -> New Repo -> expenseflow -> Public
-2. Upload all files from this folder (drag & drop)
-3. Commit
+## How to Update GitHub (2 min)
+1. Download this ZIP
+2. Extract
+3. Go to your GitHub repo: expenseflow
+4. Delete old index.html and upload new index.html from this ZIP
+5. Commit changes -> Vercel auto redeploys
 
-Option B - Terminal:
-```bash
-git clone https://github.com/YOUR_USERNAME/expenseflow.git
-cd expenseflow
-# copy files here
-git add .
-git commit -m "ExpenseFlow with Investments"
-git push origin main
-```
+## Supabase Setup (Required)
+1. Supabase Dashboard -> SQL Editor -> Paste supabase.sql -> Run
+2. Authentication -> Providers:
+   - Email -> Enable
+   - Google -> Enable (add Client ID + Secret from Google Cloud Console)
+3. Authentication -> URL Configuration -> Site URL = https://your-vercel-link.vercel.app
+4. Settings -> API -> Copy URL + anon key -> Save in app's yellow box OR add to Vercel Env Variables
 
-## Vercel Live (1 min) - WITHOUT GitHub also works
-**With GitHub (Recommended):**
-1. vercel.com -> Add New Project -> Import from GitHub -> Select expenseflow repo
-2. Settings -> Environment Variables -> Add:
-   - VITE_SUPABASE_URL
-   - VITE_SUPABASE_ANON_KEY
-3. Deploy -> Live link: https://expenseflow-xxx.vercel.app
+## Vercel Environment Variables
+Add in Vercel -> Project -> Settings -> Environment Variables:
+- VITE_SUPABASE_URL
+- VITE_SUPABASE_ANON_KEY
+Then Redeploy.
 
-**Without GitHub (Direct Upload):**
-1. vercel.com -> New Project -> Browse -> Upload index.html
-2. Deploy -> Live
+## Cost
+- GitHub: Free
+- Vercel: Free (100GB/month)
+- Supabase: Free for 500MB DB + 50k users
+- Play Store: $25 one-time (optional)
 
-Auto-deploy: Every GitHub push = auto Vercel deploy.
-
-## Play Store Cost
-- Android: $25 one-time (unlimited apps)
-- iOS: $99/year
-- Supabase Free: 500MB, 50k users - enough for 1000 users
-- Vercel/GitHub: Free
-
-## Files
-- index.html - Main app (single file, no build needed)
-- supabase.sql - Database schema
-- vercel.json - Vercel config
-- .env.example - Env template
-- README.md - This guide
+All free for 1000 users!

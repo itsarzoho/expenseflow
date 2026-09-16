@@ -1,7 +1,7 @@
--- ExpenseFlow Pro - Money In/Out + Investments - For 1000 Users
--- Run this in Supabase SQL Editor
+-- ExpenseFlow Pro - Final for GitHub - 1000 Users Ready
+-- Run in Supabase SQL Editor
 
--- Transactions Table (Money In / Money Out)
+-- 1. Transactions Table (Income / Expense)
 create table if not exists public.transactions (
  id uuid primary key default gen_random_uuid(),
  user_id uuid references auth.users(id) on delete cascade,
@@ -14,7 +14,7 @@ create table if not exists public.transactions (
  created_at timestamptz default now()
 );
 
--- Investments Table (Gold, Crypto, SIP, Stocks, FD, RD, etc)
+-- 2. Investments Table (Gold, Bitcoin, SIP, Stocks, FD, RD)
 create table if not exists public.investments (
  id uuid primary key default gen_random_uuid(),
  user_id uuid references auth.users(id) on delete cascade,
@@ -35,14 +35,17 @@ create table if not exists public.investments (
 alter table public.transactions enable row level security;
 alter table public.investments enable row level security;
 
--- Policies - User can only see own data
+-- Policies
 drop policy if exists "own_transactions" on public.transactions;
 create policy "own_transactions" on public.transactions for all using (auth.uid()=user_id) with check (auth.uid()=user_id);
 
 drop policy if exists "own_investments" on public.investments;
 create policy "own_investments" on public.investments for all using (auth.uid()=user_id) with check (auth.uid()=user_id);
 
--- Indexes for 1000 users performance
+-- Indexes for performance
 create index if not exists idx_trans_user on public.transactions(user_id);
 create index if not exists idx_trans_date on public.transactions(date);
 create index if not exists idx_inv_user on public.investments(user_id);
+
+-- NOTE: No need to create auth.users table - Supabase creates it automatically for login
+-- Email, Password, Google login all saved in auth.users

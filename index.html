@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>ExpenseCloud</title>
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ExpenseCloud">
+<link rel="manifest" href="./manifest.json">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script type="importmap">{"imports":{"@supabase/supabase-js":"https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"}}</script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{font-family:'Inter',sans-serif;-webkit-tap-highlight-color:transparent}
+body{overscroll-behavior:none;background:#f8fafc}
+::-webkit-scrollbar{width:0;height:0}
+dialog::backdrop{background:rgba(0,0,0,0.6);backdrop-filter:blur(16px)}
+dialog{border:0;padding:0}
+@media(max-width:640px){dialog{margin:0;margin-top:auto;border-radius:28px 28px 0 0;width:100%;max-width:100%}}
+.tab-active{background:#000;color:#fff}
+.tab-inactive{background:#f1f5f9;color:#64748b}
+</style>
+</head>
+<body class="min-h-[100dvh] flex flex-col">
+<header class="sticky top-0 z-40 bg-white/90 backdrop-blur-2xl border-b" style="padding-top:env(safe-area-inset-top)">
+<div class="max-w-[1400px] mx-auto px-3 sm:px-4 h-[64px] flex items-center justify-between">
+<div class="flex items-center gap-2.5 min-w-0 flex-1">
+<div class="w-10 h-10 bg-black rounded-[12px] flex items-center justify-center text-white text-[20px] shrink-0">💳</div>
+<div class="min-w-0 flex-1">
+<h1 class="font-black text-[14px] sm:text-[15px] flex items-center gap-1.5">ExpenseCloud</h1>
+<p class="text-[10px] text-gray-500 truncate" id="statusLine" style="display:none"></p>
+</div>
+</div>
+<div class="flex items-center gap-2 shrink-0">
+<div id="userBox" class="hidden items-center gap-2">
+<span id="userEmail" class="text-[11px] font-bold max-w-[100px] truncate hidden md:block"></span>
+<button onclick="handleLogout()" class="border-2 px-3 py-2 rounded-full text-[11px] font-bold hover:bg-black hover:text-white">Logout</button>
+</div>
+<button onclick="openAddModal()" class="bg-black text-white px-4 sm:px-5 py-2.5 rounded-full text-[11px] font-black">+ Add</button>
+</div>
+</div>
+</header> <main class="flex-1 max-w-[1400px] w-full mx-auto px-3 sm:px-4 py-4 pb-[100px]">
+<div id="authBanner" class="mb-4 bg-black text-white rounded-[20px] p-4 sm:p-5 flex flex-col sm:flex-row justify-between gap-3">
+<div><h3 class="font-bold text-[14px]">🔐 Login to Sync Your Data</h3><p class="text-[11px] text-gray-300 mt-1">Login with Email + Password. Data syncs to cloud + works offline.</p></div>
+<div class="flex gap-2 shrink-0"><button onclick="openAuthModal('login')" class="bg-white text-black px-5 py-2.5 rounded-full text-[11px] font-black">Login</button><button onclick="openAuthModal('signup')" class="border border-white/20 px-5 py-2.5 rounded-full text-[11px] font-bold">Sign Up</button></div>
+</div> <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-4">
+<div class="lg:col-span-2 grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+<div class="col-span-2 bg-gradient-to-br from-black to-gray-800 text-white rounded-[20px] p-5 shadow-xl">
+<p class="text-[10px] tracking-widest font-bold text-gray-400">WALLET BALANCE</p>
+<h2 id="walletBalance" class="text-[28px] font-black mt-2">₹0</h2>
+<p class="text-[11px] text-gray-400 mt-1"><span id="incomeTotal">Income ₹0</span> • <span id="expenseTotal">Expense ₹0</span></p>
+<div class="flex gap-2 mt-3"><span class="text-[10px] bg-white/15 px-2.5 py-1 rounded-full">Income</span><span class="text-[10px] bg-white/15 px-2.5 py-1 rounded-full">Expense</span></div>
+</div>
+<div class="bg-white rounded-[20px] border p-4 shadow-sm"><p class="text-[9px] font-bold tracking-widest text-gray-500">TOTAL SPENT</p><h3 id="totalSpent" class="text-[22px] font-black mt-2">₹0</h3><p class="text-[10px] text-gray-500"><span id="totalEntries">0</span> entries • <span id="connStatus">Local</span></p></div>
+<div class="bg-white rounded-[20px] border p-4 shadow-sm"><p class="text-[9px] font-bold tracking-widest text-gray-500">THIS MONTH</p><h3 id="thisMonthSpent" class="text-[22px] font-black mt-2">₹0</h3><p class="text-[10px] text-gray-500" id="thisMonthLabel">Sep 2026</p></div>
+</div>
+<div class="bg-white rounded-[20px] border p-4 shadow-sm">
+<p class="text-[9px] font-bold tracking-widest text-gray-500">QUICK STATS</p>
+<div class="grid grid-cols-2 gap-3 mt-3">
+<div class="bg-gray-50 rounded-[14px] p-3"><p class="text-[10px] text-gray-500">AVG / DAY</p><p id="avgDay" class="font-black text-[16px] mt-1">₹0</p></div>
+<div class="bg-gray-50 rounded-[14px] p-3"><p class="text-[10px] text-gray-500">RECORDS</p><p id="totalRecords" class="font-black text-[16px] mt-1">0</p></div>
+<div class="bg-gray-50 rounded-[14px] p-3"><p class="text-[10px] text-gray-500">CATEGORIES</p><p id="catCount" class="font-black text-[16px] mt-1">52</p></div> </div>
+</div>
+</div> <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+<div class="bg-white rounded-[20px] border p-4 shadow-sm">
+<h4 class="font-bold text-[13px]">Category</h4>
+<div style="height:180px"><canvas id="donutChart"></canvas></div>
+<div id="donutList" class="mt-3 space-y-1.5 max-h-[100px] overflow-auto text-[11px]"></div>
+</div>
+<div class="bg-white rounded-[20px] border p-4 shadow-sm">
+<h4 class="font-bold text-[13px]">Type</h4>
+<div style="height:180px"><canvas id="pieChart"></canvas></div>
+<div id="pieList" class="mt-3 space-y-1.5 max-h-[100px] overflow-auto text-[11px]"></div>
+</div>
+<div class="bg-white rounded-[20px] border p-4 shadow-sm">
+<h4 class="font-bold text-[13px]">Monthly</h4>
+<div style="height:180px"><canvas id="barChart"></canvas></div>
+</div>
+<div class="bg-white rounded-[20px] border p-4 shadow-sm">
+<h4 class="font-bold text-[13px]">Daily</h4>
+<div style="height:180px"><canvas id="lineChart"></canvas></div> </div>
+</div> <div class="bg-white rounded-[20px] border shadow-sm overflow-hidden">
+<div class="p-4 sm:p-5 flex flex-col sm:flex-row justify-between gap-3">
+<div><h4 class="font-black text-[14px]">☰ Transactions <span id="tableCount" class="bg-black text-white text-[10px] px-2.5 py-1 rounded-full">0 / 0</span></h4><p class="text-[10px] text-gray-500">52 cats • Income/Expense </p></div>
+<div class="flex gap-2"><select id="incomeFilter" onchange="render()" class="border-2 border-gray-100 rounded-full px-3 py-2 text-[11px] font-bold"><option value="All">All</option><option value="Expense">Expense</option><option value="Income">Income</option></select><button onclick="exportCSV()" class="border-2 border-black px-4 py-2 rounded-full text-[11px] font-black">⬇️ Export</button></div>
+</div>
+<div class="px-4 pb-3 flex flex-col sm:flex-row gap-2">
+<div class="flex items-center gap-2 flex-1 border-2 border-gray-100 rounded-full px-4 py-2.5 bg-gray-50"><span>🔍</span><input id="search" placeholder="Search..." class="bg-transparent outline-none text-[13px] flex-1" oninput="render()"></div>
+<div class="flex gap-2 overflow-auto"><select id="catFilter" onchange="render()" class="border-2 border-gray-100 rounded-full px-3 py-2.5 text-[11px] bg-white shrink-0"><option value="All">All Cats</option></select><select id="typeFilter" onchange="render()" class="border-2 border-gray-100 rounded-full px-3 py-2.5 text-[11px] bg-white shrink-0"><option value="All">All Types</option></select><select id="monthFilter" onchange="render()" class="border-2 border-gray-100 rounded-full px-3 py-2.5 text-[11px] bg-white shrink-0"><option value="All">All Months</option></select></div>
+</div>
+<div class="overflow-auto"><table class="w-full text-[12px] min-w-[700px]"><thead class="bg-gray-50 text-[10px] text-gray-500 border-y"><tr><th class="p-3 text-left">DATE</th><th class="p-3 text-left">TYPE</th><th class="p-3 text-left">AMOUNT</th><th class="p-3 text-left">CATEGORY</th><th class="p-3 text-left">DETAILS</th><th class="p-3 text-left">ACTION</th></tr></thead><tbody id="tbody"></tbody></table></div>
+</div>
+</main> <div class="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white to-transparent pointer-events-none" style="padding-bottom:calc(1rem + env(safe-area-inset-bottom))"><button onclick="openAddModal()" class="pointer-events-auto w-full bg-black text-white py-4 rounded-full font-black text-[14px] shadow-2xl">+ Add Income / Expense</button></div> <dialog id="authModal" class="p-0 rounded-[24px] w-full max-w-[420px] shadow-2xl m-auto">
+<div class="bg-white p-6 rounded-[24px]">
+<div class="flex justify-between mb-5"><div><h3 class="font-black text-[20px]">Welcome</h3><p class="text-[12px] text-gray-500">Expense Tracker</p></div><button onclick="authModal.close()" class="w-8 h-8 rounded-full bg-gray-100">✕</button></div>
+<div class="flex gap-2 mb-5 p-1 bg-gray-100 rounded-full">
+<button id="tabLogin" onclick="switchAuthTab('login')" class="flex-1 py-2.5 rounded-full text-[12px] font-black tab-active">Login</button>
+<button id="tabSignup" onclick="switchAuthTab('signup')" class="flex-1 py-2.5 rounded-full text-[12px] font-black tab-inactive">Sign Up</button>
+<button id="tabForgot" onclick="switchAuthTab('forgot')" class="flex-1 py-2.5 rounded-full text-[11px] font-black tab-inactive">Forgot?</button>
+</div>
+<!-- Google Login disabled - Provider not enabled in Supabase. Use Email login only. -->
+<form id="loginForm" class="space-y-3" onsubmit="handleEmailLogin(event)">
+<input id="loginEmail" type="email" placeholder="Email" required class="w-full border-2 border-gray-100 rounded-full px-4 py-3 text-[13px] focus:border-black outline-none">
+<input id="loginPassword" type="password" placeholder="Password" required class="w-full border-2 border-gray-100 rounded-full px-4 py-3 text-[13px] focus:border-black outline-none">
+<button type="submit" class="w-full bg-black text-white py-3.5 rounded-full text-[13px] font-black">Login</button>
+</form>
+<form id="signupForm" class="space-y-3 hidden" onsubmit="handleSignup(event)">
+<input id="signupEmail" type="email" placeholder="Email" required class="w-full border-2 border-gray-100 rounded-full px-4 py-3 text-[13px] focus:border-black outline-none">
+<input id="signupPassword" type="password" placeholder="Create password" required minlength="6" class="w-full border-2 border-gray-100 rounded-full px-4 py-3 text-[13px] focus:border-black outline-none">
+<input id="signupConfirm" type="password" placeholder="Confirm password" required class="w-full border-2 border-gray-100 rounded-full px-4 py-3 text-[13px] focus:border-black outline-none">
+<button type="submit" class="w-full bg-black text-white py-3.5 rounded-full text-[13px] font-black">Create Account</button>
+</form>
+<form id="forgotForm" class="space-y-3 hidden" onsubmit="handleForgotPassword(event)">
+<input id="forgotEmail" type="email" placeholder="Your email" required class="w-full border-2 border-gray-100 rounded-full px-4 py-3 text-[13px] focus:border-black outline-none">
+<button type="submit" class="w-full bg-black text-white py-3.5 rounded-full text-[13px] font-black">Send Reset Link</button>
+</form>
+<p id="authMsg" class="text-[11px] text-center mt-4 min-h-[18px]"></p>
+</div>
+</dialog> <dialog id="addModal" class="p-0 rounded-t-[28px] sm:rounded-[24px] w-full sm:max-w-[540px] shadow-2xl m-0 sm:m-auto mt-auto sm:mb-auto">
+<form id="form" class="p-5 sm:p-7 space-y-4 bg-white rounded-t-[28px] sm:rounded-[24px] max-h-[92dvh] overflow-auto">
+<div class="flex justify-between"><div><h3 class="font-black text-[18px]">Add Transaction</h3><p class="text-[11px] text-gray-500">Fixed • All 4 Trackers • Android iOS</p></div><button type="button" onclick="addModal.close()" class="w-9 h-9 rounded-full bg-gray-100">✕</button></div>
+<div class="flex gap-2 p-1 bg-gray-100 rounded-full">
+<button type="button" id="typeExpenseBtn" onclick="setTransType('Expense')" class="flex-1 py-2.5 rounded-full text-[12px] font-black tab-active">💸 Expense</button>
+<button type="button" id="typeIncomeBtn" onclick="setTransType('Income')" class="flex-1 py-2.5 rounded-full text-[12px] font-black tab-inactive">💰 Income</button>
+</div>
+<input type="hidden" name="transaction_type" id="transTypeInput" value="Expense">
+<div class="grid grid-cols-2 gap-3">
+<div><label class="text-[10px] font-bold tracking-widest text-gray-500">DATE</label><input name="date" type="date" required class="w-full border-2 border-gray-100 rounded-full px-4 py-3 text-[14px] mt-1.5 focus:border-black outline-none" id="dateInput"></div>
+<div><label class="text-[10px] font-bold tracking-widest text-gray-500">AMOUNT ₹</label><input name="amount" type="number" step="0.01" inputmode="decimal" required placeholder="350" class="w-full border-2 border-gray-100 rounded-full px-4 py-3 text-[14px] mt-1.5 focus:border-black outline-none"></div>
+</div>
+<div><label class="text-[10px] font-bold tracking-widest text-gray-500">CATEGORY</label><select name="category" id="catSelect" class="w-full border-2 border-gray-100 rounded-full px-4 py-3 text-[14px] mt-1.5 focus:border-black outline-none bg-white"></select></div>
+<div><label class="text-[10px] font-bold tracking-widest text-gray-500">TYPE</label><select name="type" class="w-full border-2 border-gray-100 rounded-full px-4 py-3 text-[14px] mt-1.5 focus:border-black outline-none bg-white"><option>Purchase</option><option>Bill Paid</option><option>Food</option><option>Travel</option><option>Salary</option><option>Freelance</option><option>Other</option></select></div>
+<div><label class="text-[10px] font-bold tracking-widest text-gray-500">DETAILS</label><input name="details" placeholder="e.g., Zomato, Salary" class="w-full border-2 border-gray-100 rounded-full px-4 py-3 text-[14px] mt-1.5 focus:border-black outline-none"></div>
+<div class="flex gap-3 pt-2" style="padding-bottom:env(safe-area-inset-bottom)"><button type="button" onclick="addModal.close()" class="flex-1 border-2 border-gray-200 py-4 rounded-full text-[14px] font-semibold">Cancel</button><button class="flex-1 bg-black text-white py-4 rounded-full text-[14px] font-black">Save</button></div>
+</form>
+</dialog> <script type="module">
+import { createClient } from "@supabase/supabase-js";
+const SUPABASE_URL = "https://jgxyfunalxupugwpvcib.supabase.co";
+const SUPABASE_KEY = "sb_publishable_Nqeu8b4_kljTrCAsNQRWgw_fehxexxd";
+let supabase=null, user=null, data=[], donutChart=null, pieChart=null, barChart=null, lineChart=null;
+let currentTransType='Expense'; const BASE_CATS=["🏠 Household","🍔 Food","🥦 Grocery","🛒 Shopping","🚌 Travel","⛽ Fuel","🎓 Education","🏋️ Health","📱 Recharge","💡 Bills","🏦 Loan","💳 Credit Card","🎁 Gifts","🍿 Entertainment","👶 Family","💼 Business","📦 Other","🏢 Office","💻 Freelance","💍 Wedding","🛡️ Insurance","📈 SIP","📊 Stocks","💰 Taxes","🔁 Subscriptions","📺 OTT","🎮 Gaming","💇 Beauty","🏃 Gym","📖 Learning","✏️ Stationery","🚗 Vehicle","🏠 Maintenance","🎂 Birthday","✈️ Flight","☕ Cafe","🧒 Pocket Money","💼 Salary","💰 Income"];
+const COLORS=["#0ea5e9","#f59e0b","#10b981","#8b5cf6","#06b6d4","#1f2937","#ef4444","#22c55e","#f97316","#6366f1"];
+function formatDateDDMMMYY(dateStr){ try{ if(!dateStr) return '-'; // dateStr expected YYYY-MM-DD const d=new Date(dateStr); if(isNaN(d)) return dateStr; const day=String(d.getDate()).padStart(2,'0'); const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; const mon=months[d.getMonth()]; const yr=String(d.getFullYear()).slice(-2); return `${day}-${mon}-${yr}`; }catch(e){ return dateStr; }
+} function loadCats(){ try{ const c=JSON.parse(localStorage.getItem('custom_cats_fixed')||'[]'); return [...BASE_CATS,...c]; }catch(e){ return BASE_CATS; } }
+function getColor(i){ return COLORS[i%COLORS.length]; } async function init(){ try{ supabase = createClient(SUPABASE_URL, SUPABASE_KEY); }catch(e){ console.log('Supabase init failed, local mode'); } if(supabase){ try{ const {data:s}=await supabase.auth.getSession(); user=s.session?.user||null; supabase.auth.onAuthStateChange(async (_e,sess)=>{ user=sess?.user||null; updateAuthUI(); await loadData(); }); }catch(e){} } updateAuthUI(); refreshCats(); const d=new Date(); const dateEl=document.getElementById('dateInput'); if(dateEl) dateEl.valueAsDate=d; const label=document.getElementById('thisMonthLabel'); if(label) label.textContent=d.toLocaleString('default',{month:'long', year:'numeric'}); await loadData(); // Force render charts after small delay to ensure Chart.js loaded setTimeout(()=>{ render(); console.log('Charts rendered fixed'); }, 300);
+} function updateAuthUI(){ const userBox=document.getElementById('userBox'); const loginBtn=document.getElementById('loginBtn'); // may be removed - safe check const banner=document.getElementById('authBanner'); const emailEl=document.getElementById('userEmail'); const connStatus=document.getElementById('connStatus'); if(user && userBox){ userBox.classList.remove('hidden'); userBox.classList.add('flex'); if(loginBtn) { loginBtn.classList.add('hidden'); loginBtn.style.display='none'; } if(banner) banner.classList.add('hidden'); if(emailEl) emailEl.textContent=user.email; if(connStatus) connStatus.textContent='Cloud'; } else { if(userBox){ userBox.classList.add('hidden'); userBox.classList.remove('flex'); } if(loginBtn) { loginBtn.classList.remove('hidden'); loginBtn.style.display=''; } if(banner) banner.classList.remove('hidden'); if(connStatus) connStatus.textContent='Local'; }
+} window.openAuthModal=(tab)=>{ switchAuthTab(tab||'login'); document.getElementById('authModal').showModal(); };
+window.switchAuthTab=(tab)=>{ ['login','signup','forgot'].forEach(t=>{ const form=document.getElementById(t+'Form'); if(form) form.classList.toggle('hidden', t!==tab); const btn=document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)); if(btn) btn.className = t===tab ? 'flex-1 py-2.5 rounded-full text-[12px] font-black tab-active' : 'flex-1 py-2.5 rounded-full text-[11px] font-black tab-inactive'; }); const msg=document.getElementById('authMsg'); if(msg) msg.textContent='';
+};
+window.handleGoogleLogin=async()=>{ if(!supabase){ alert('Login requires internet - using local mode for now'); return; } const msg=document.getElementById('authMsg'); if(msg) msg.textContent='Opening Google...'; const {error}=await supabase.auth.signInWithOAuth({provider:'google', options:{redirectTo: window.location.href}}); if(error && msg){ msg.textContent='❌ '+error.message; }
+};
+window.handleEmailLogin=async(e)=>{ e.preventDefault(); if(!supabase){ alert('Supabase not configured - use local mode'); return; } const email=document.getElementById('loginEmail').value.trim(); const password=document.getElementById('loginPassword').value; const msg=document.getElementById('authMsg'); if(msg) msg.textContent='Logging in...'; const {error}=await supabase.auth.signInWithPassword({email,password}); if(msg){ if(error) msg.textContent='❌ '+error.message; else { msg.textContent='✅ Login success!'; setTimeout(()=>document.getElementById('authModal').close(), 800); } }
+};
+window.handleSignup=async(e)=>{ e.preventDefault(); if(!supabase) return alert('Supabase not configured'); const email=document.getElementById('signupEmail').value.trim(); const password=document.getElementById('signupPassword').value; const confirm=document.getElementById('signupConfirm').value; const msg=document.getElementById('authMsg'); if(password!==confirm){ if(msg) msg.textContent='❌ Passwords mismatch'; return; } if(msg) msg.textContent='Creating account...'; const {data, error}=await supabase.auth.signUp({email,password}); if(error){ if(msg) msg.textContent='❌ '+error.message; return; } // Try auto login - if email confirmation disabled, this will work if(msg) msg.textContent='✅ Account created! Trying to login...'; const {error:loginError} = await supabase.auth.signInWithPassword({email,password}); if(!loginError){ if(msg) msg.textContent='✅ Account created & logged in!'; setTimeout(()=>{ document.getElementById('authModal').close(); }, 800); } else { // Email confirmation required if(msg) msg.textContent='✅ Account created! Check your email inbox (and spam) for confirmation link. If no email, ask admin to disable "Confirm email" in Supabase > Auth > Providers > Email.'; }
+};
+window.handleForgotPassword=async(e)=>{ e.preventDefault(); if(!supabase) return alert('Supabase not configured'); const email=document.getElementById('forgotEmail').value.trim(); const msg=document.getElementById('authMsg'); if(msg) msg.textContent='Sending...'; const {error}=await supabase.auth.resetPasswordForEmail(email, {redirectTo: window.location.href}); if(msg){ if(error) msg.textContent='❌ '+error.message; else msg.textContent='✅ Reset link sent to Gmail!'; }
+};
+window.handleLogout=async()=>{ if(supabase) await supabase.auth.signOut(); user=null; data=[]; localStorage.removeItem('ef_fixed'); updateAuthUI(); render(); };
+window.setTransType=(type)=>{ currentTransType=type; const hidden=document.getElementById('transTypeInput'); if(hidden) hidden.value=type; const expBtn=document.getElementById('typeExpenseBtn'); const incBtn=document.getElementById('typeIncomeBtn'); if(expBtn) expBtn.className = type==='Expense' ? 'flex-1 py-2.5 rounded-full text-[12px] font-black tab-active' : 'flex-1 py-2.5 rounded-full text-[12px] font-black tab-inactive'; if(incBtn) incBtn.className = type==='Income' ? 'flex-1 py-2.5 rounded-full text-[12px] font-black tab-active' : 'flex-1 py-2.5 rounded-full text-[12px] font-black tab-inactive';
+}; async function loadData(){ if(!user || !supabase){ try{ const s=localStorage.getItem('ef_fixed'); data=s?JSON.parse(s):[]; }catch(e){ data=[]; } render(); return; } try{ let r=await supabase.from('expenses').select('*').order('date',{ascending:false}).limit(3000); if(r.error) r=await supabase.from('transactions').select('*').order('date',{ascending:false}).limit(3000); if(!r.error && r.data){ data=r.data.map(x=>({id:x.id, date:x.date, amount:x.amount, category:x.category, type:x.type||x.transaction_type||'Other', details:x.details||x.remarks||'', transaction_type:x.transaction_type|| (x.type==='Salary'?'Income':'Expense'), mode:x.mode||'UPI'})); } else { data=[]; } }catch(e){ data=[]; } render();
+} function refreshCats(){ const cats=loadCats(); const sel=document.getElementById('catSelect'); if(sel) sel.innerHTML=cats.map(c=>`<option>${c}</option>`).join(''); const filt=document.getElementById('catFilter'); if(filt) filt.innerHTML='<option value="All">All Categories</option>'+cats.map(c=>`<option>${c}</option>`).join('');
+}
+window.toggleCustomCat=()=>{ document.getElementById('customCatBox')?.classList.toggle('hidden'); };
+window.addCustomCategory=()=>{ const input=document.getElementById('customCatInput'); const v=input?.value.trim(); if(!v) return alert('Enter category'); const c=JSON.parse(localStorage.getItem('custom_cats_fixed')||'[]'); c.push(v); localStorage.setItem('custom_cats_fixed',JSON.stringify(c)); if(input) input.value=''; document.getElementById('customCatBox')?.classList.add('hidden'); refreshCats();
+};
+function saveLocal(){ try{ localStorage.setItem('ef_fixed', JSON.stringify(data)); }catch(e){} }
+function getFiltered(){ const q=document.getElementById('search')?.value.toLowerCase()||''; const cf=document.getElementById('catFilter')?.value||'All'; const tf=document.getElementById('typeFilter')?.value||'All'; const mf=document.getElementById('monthFilter')?.value||'All'; const incF=document.getElementById('incomeFilter')?.value||'All'; return data.filter(x=>{ if(cf!=='All'&&x.category!==cf) return false; if(tf!=='All'&&x.type!==tf) return false; if(mf!=='All'&&x.date.slice(0,7)!==mf) return false; if(incF!=='All'&&(x.transaction_type||'Expense')!==incF) return false; if(q&&!`${x.details} ${x.category} ${x.type}`.toLowerCase().includes(q)) return false; return true; });
+} window.render=()=>{ const f=getFiltered(); const totalExpense=f.filter(x=>(x.transaction_type||'Expense')==='Expense').reduce((s,x)=>s+ +x.amount,0); const totalIncome=f.filter(x=>(x.transaction_type||'Expense')==='Income').reduce((s,x)=>s+ +x.amount,0); const balance=totalIncome-totalExpense; const elWallet=document.getElementById('walletBalance'); if(elWallet) elWallet.textContent=`₹${balance.toLocaleString('en-IN')}`; const elInc=document.getElementById('incomeTotal'); if(elInc) elInc.textContent=`Income ₹${totalIncome.toLocaleString('en-IN')}`; const elExp=document.getElementById('expenseTotal'); if(elExp) elExp.textContent=`Expense ₹${totalExpense.toLocaleString('en-IN')}`; const elTotal=document.getElementById('totalSpent'); if(elTotal) elTotal.textContent=`₹${totalExpense.toLocaleString('en-IN')}`; const elThisM=document.getElementById('thisMonthSpent'); if(elThisM) elThisM.textContent=`₹${f.filter(x=>(x.transaction_type||'Expense')==='Expense' && new Date(x.date).getMonth()===new Date().getMonth()).reduce((s,x)=>s+ +x.amount,0).toLocaleString('en-IN')}`; const elAvg=document.getElementById('avgDay'); if(elAvg) elAvg.textContent=`₹${Math.round(totalExpense/Math.max(1,new Date().getDate())).toLocaleString('en-IN')}`; const elRec=document.getElementById('totalRecords'); if(elRec) elRec.textContent=f.length; const elEnt=document.getElementById('totalEntries'); if(elEnt) elEnt.textContent=`${f.length}`; const elTbl=document.getElementById('tableCount'); if(elTbl) elTbl.textContent=`${f.length} / ${data.length}`; const months=[...new Set(data.map(d=>d.date.slice(0,7)).filter(Boolean))].sort().reverse(); const monthSel=document.getElementById('monthFilter'); if(monthSel){ const curM=monthSel.value; monthSel.innerHTML='<option value="All">All Months</option>'+months.map(m=>`<option ${m===curM?'selected':''}>${m}</option>`).join(''); } // CHARTS - FIXED TO WORK EVEN WITH 0 DATA const byCat={}; f.filter(x=>(x.transaction_type||'Expense')==='Expense').forEach(x=>{byCat[x.category]=(byCat[x.category]||0)+ +x.amount;}); let catLabels=Object.keys(byCat); let catVals=Object.values(byCat); if(catLabels.length===0){ catLabels=['No Data']; catVals=[1]; } try{ const ctx=document.getElementById('donutChart'); if(ctx){ if(donutChart) donutChart.destroy(); donutChart=new Chart(ctx,{type:'doughnut',data:{labels:catLabels,datasets:[{data:catVals, backgroundColor:catLabels.map((_,i)=>getColor(i)), borderWidth:2}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}}}); } }catch(e){ console.error('Donut error', e); } const donutList=document.getElementById('donutList'); if(donutList){ if(Object.keys(byCat).length===0) donutList.innerHTML='<p class="text-gray-400 text-center">Add expense to see chart</p>'; else donutList.innerHTML=Object.keys(byCat).slice(0,4).map((l,i)=>`<div class="flex justify-between"><span>${l}</span><span class="font-bold">₹${byCat[l].toLocaleString('en-IN')}</span></div>`).join(''); } const byType={}; f.forEach(x=>{byType[x.type]=(byType[x.type]||0)+ +x.amount;}); let typeLabels=Object.keys(byType); let typeVals=Object.values(byType); if(typeLabels.length===0){ typeLabels=['No Data']; typeVals=[1]; } try{ const ctx=document.getElementById('pieChart'); if(ctx){ if(pieChart) pieChart.destroy(); pieChart=new Chart(ctx,{type:'pie',data:{labels:typeLabels,datasets:[{data:typeVals, backgroundColor:typeLabels.map((_,i)=>getColor(i+2)), borderWidth:2}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}}}); } }catch(e){ console.error('Pie error', e); } const pieList=document.getElementById('pieList'); if(pieList){ if(Object.keys(byType).length===0) pieList.innerHTML='<p class="text-gray-400 text-center">Add expense to see chart</p>'; else pieList.innerHTML=Object.keys(byType).slice(0,4).map(l=>`<div class="flex justify-between"><span>${l}</span><span class="font-bold">₹${byType[l].toLocaleString('en-IN')}</span></div>`).join(''); } const byMonth={}; f.filter(x=>(x.transaction_type||'Expense')==='Expense').forEach(x=>{const m=x.date.slice(0,7); byMonth[m]=(byMonth[m]||0)+ +x.amount;}); let mKeys=Object.keys(byMonth).sort().slice(-6); let mVals=mKeys.map(k=>byMonth[k]); if(mKeys.length===0){ mKeys=['2025-09','2025-10','2025-11','2025-12','2026-01','2026-02']; mVals=[0,0,0,0,0,0]; } // Format 2025-12 -> Dec'25, 2026-09 -> Sep'26 and rotate -90 deg function formatMonthLabel(key){ try{ if(key.includes('-')){ const parts=key.split('-'); const y=parts[0]; const m=parseInt(parts[1]); const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; const monthName=months[m-1]||parts[1]; return `${monthName}'${y.slice(-2)}`; } return key; }catch(e){ return key; } } const formattedLabels=mKeys.map(k=>formatMonthLabel(k)); // Year separate card logic - collect unique years const uniqueYears=[...new Set(mKeys.map(k=>k.split('-')[0]))].filter(Boolean); try{ const ctx=document.getElementById('barChart'); if(ctx){ if(barChart) barChart.destroy(); barChart=new Chart(ctx,{ type:'bar', data:{labels:formattedLabels, datasets:[{data:mVals, backgroundColor:'#000', borderRadius:6}]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{ callbacks:{ title:function(items){ if(items.length>0){ const idx=items[0].dataIndex; return mKeys[idx] + ' (' + formattedLabels[idx] + ')'; } return ''; } } } }, scales:{ y:{beginAtZero:true, grid:{color:'#f3f4f6'}}, x:{ grid:{display:false}, ticks:{ maxRotation:90, minRotation:90, autoSkip:false, font:{size:11, weight:'bold'} } } } } }); } // Add year badge card if multiple years const barCard=document.getElementById('barChart')?.closest('.bg-white'); if(barCard && uniqueYears.length>0){ let yearCard=barCard.querySelector('.year-card'); if(!yearCard){ yearCard=document.createElement('div'); yearCard.className='year-card mt-2 flex gap-1.5 flex-wrap'; barCard.appendChild(yearCard); } yearCard.innerHTML=uniqueYears.map(y=>`<span class="text-[10px] bg-black text-white px-2.5 py-1 rounded-full font-bold">${y}</span>`).join(''); } }catch(e){ console.error('Bar error', e); } const dailyMap={}; const today=new Date(); for(let i=13;i>=0;i--){ const d=new Date(today); d.setDate(today.getDate()-i); dailyMap[d.toISOString().slice(0,10)]=0; } f.filter(x=>(x.transaction_type||'Expense')==='Expense').forEach(x=>{ if(dailyMap.hasOwnProperty(x.date)) dailyMap[x.date]+= +x.amount; }); let dailyKeys=Object.keys(dailyMap); let dailyVals=Object.values(dailyMap); try{ const ctx=document.getElementById('lineChart'); if(ctx){ if(lineChart) lineChart.destroy(); lineChart=new Chart(ctx,{type:'line',data:{labels:dailyKeys.map(k=>formatDateDDMMMYY(k)),datasets:[{data:dailyVals, borderColor:'#000', backgroundColor:'rgba(0,0,0,0.05)', tension:0.4, fill:true, pointRadius:0}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}, x:{grid:{display:false}}}}}); } }catch(e){ console.error('Line error', e); } const tbody=document.getElementById('tbody'); if(tbody){ tbody.innerHTML=f.map((x,i)=>`<tr class="border-t hover:bg-gray-50"><td class="p-3 text-[11px]">${formatDateDDMMMYY(x.date)}</td><td class="p-3"><span class="${(x.transaction_type||'Expense')==='Income'?'bg-green-100 text-green-700':'bg-red-50 text-red-600'} border px-2 py-1 rounded-full text-[10px] font-bold">${x.transaction_type||'Expense'}</span></td><td class="p-3 font-black">₹${(+x.amount).toLocaleString('en-IN')}</td><td class="p-3"><span class="border px-2 py-1 rounded-full text-[11px] bg-white">${x.category}</span></td><td class="p-3 max-w-[120px] truncate text-[11px]">${x.details||'-'}</td><td class="p-3"><button onclick="del('${x.id}',${i})" class="text-red-500 text-[11px] border border-red-100 px-3 py-1 rounded-full">Delete</button></td></tr>`).join('')||'<tr><td colspan=6 class="p-12 text-center text-gray-400">No transactions yet<br><button onclick="openAddModal()" class="mt-3 bg-black text-white px-5 py-2 rounded-full text-xs font-bold">+ Add First</button></td></tr>'; }
+}; window.openAddModal=()=>{ const d=new Date(); const el=document.getElementById('dateInput'); if(el) el.valueAsDate=d; setTransType('Expense'); document.getElementById('addModal').showModal(); };
+window.del=async(id,idx)=>{ if(!confirm('Delete?')) return; if(!user || !supabase){ data.splice(idx,1); saveLocal(); render(); return; } try{ let r=await supabase.from('expenses').delete().eq('id',id); if(r.error) r=await supabase.from('transactions').delete().eq('id',id); if(r.error) throw r.error; data=data.filter(d=>d.id!=id); render(); }catch(e){ alert(e.message); }
+};
+document.getElementById('form')?.addEventListener('submit', async(e)=>{ e.preventDefault(); const fd=new FormData(e.target); const item={date:fd.get('date'), amount:parseFloat(fd.get('amount')), category:fd.get('category'), type:fd.get('type'), details:fd.get('details'), transaction_type:fd.get('transaction_type')||'Expense', mode:'UPI', user_id:user?.id}; if(!item.date||!item.amount) return alert('Fill date and amount'); if(!user || !supabase){ data.unshift({...item, id:Date.now().toString()}); saveLocal(); render(); document.getElementById('addModal').close(); e.target.reset(); return; } try{ let res=await supabase.from('expenses').insert(item).select(); if(res.error){ const t={date:item.date, amount:item.amount, category:item.category, transaction_type:item.transaction_type, details:item.details, user_id:user.id}; res=await supabase.from('transactions').insert(t).select(); if(res.error) throw res.error; res.data=[{...item, id:res.data[0].id}]; } data.unshift(res.data[0]); render(); document.getElementById('addModal').close(); e.target.reset(); }catch(err){ alert(err.message); }
+});
+window.exportCSV=()=>{ if(!data.length) return alert('No data'); let csv="Date,Type,Amount,Category,Details\n"+data.map(x=>`${x.date},${x.transaction_type||'Expense'},${x.amount},"${x.category}","${(x.details||'').replace(/"/g,'""')}"`).join("\n"); let b=new Blob([csv],{type:'text/csv'}); let u=URL.createObjectURL(b); let a=document.createElement('a'); a.href=u; a.download=`expensecloud-${new Date().toISOString().slice(0,10)}.csv`; a.click();
+}; init();
+</script>
+
+<footer class="mt-8 mb-[100px] lg:mb-6 text-center">
+<div class="max-w-[1400px] mx-auto px-4">
+<div class="border-t border-gray-200 pt-6 flex flex-col items-center gap-2">
+<p class="text-[12px] text-gray-600 flex items-center gap-1.5"><span>Developed by :</span> <a href="mailto:arzoho@proton.me" class="font-black text-black hover:underline">arzoho@proton.me</a></p>
+<p class="text-[10px] text-gray-400">ExpenseCloud • Secure • Offline + Cloud Sync</p>
+</div>
+</div>
+</footer>
+
+</body>
+</html>

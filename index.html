@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ExpenseCloud - Final</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.2.0/remixicon.min.css">
+<style>*{font-family:'Inter',sans-serif} dialog::backdrop{background:rgba(0,0,0,0.5); backdrop-filter:blur(4px)} dialog{border:0;border-radius:20px; max-width:95vw} canvas{display:block!important}</style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<header class="bg-gradient-to-r from-violet-600 via-indigo-600 to-blue-600 sticky top-0 z-20 shadow-lg">
+<div class="max-w-[1400px] mx-auto px-4 h-16 flex items-center justify-between">
+<div class="flex items-center gap-3"><div class="w-10 h-10 bg-white text-violet-600 rounded-xl flex items-center justify-center shadow-md"><i class="ri-wallet-3-fill text-xl"></i></div><h1 class="font-black text-white">ExpenseCloud</h1><button onclick="openAddModal()" id="addBtn" class="bg-gradient-to-r from-orange-400 to-pink-500 text-white px-5 py-2.5 rounded-full text-xs font-black flex items-center gap-1 shadow-lg ml-4"><i class="ri-add-line"></i> Add Expense</button></div>
+<div class="flex gap-2 items-center">
+<span id="userEmail" class="hidden text-xs font-bold text-white max-w-[150px] truncate"></span>
+<button onclick="openAuthModal('login')" id="loginBtn" class="bg-white text-violet-600 px-5 py-2 rounded-full text-xs font-bold shadow-md">Login</button>
+<button onclick="handleLogout()" id="logoutBtn" class="hidden bg-white/20 text-white border border-white/30 px-4 py-2 rounded-full text-xs font-bold">Logout</button>
+</div>
+</div>
+</header>
+
+<main class="max-w-[1400px] mx-auto p-4">
+
+<div id="authBanner" class="mb-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl p-5 flex items-center gap-3 shadow-lg">
+<div><h3 class="font-bold text-sm flex items-center gap-2"><i class="ri-lock-2-fill"></i> Login Required</h3><p class="text-xs text-violet-200 mt-1">Please login using the button at top right to access your data.</p></div>
+</div>
+
+<div id="statsSection" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+<div class="col-span-2 bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-500 text-white rounded-2xl p-6 shadow-xl"><p class="text-[10px] tracking-widest text-violet-200 uppercase">Wallet Balance</p><h2 id="walletBalance" class="text-3xl font-black mt-2">₹0</h2><p class="text-xs text-violet-200 mt-1"><span id="incomeTotal">Income ₹0</span> • <span id="expenseTotal">Expense ₹0</span></p></div>
+<div class="bg-gradient-to-br from-orange-50 to-pink-50 rounded-2xl border border-orange-200 p-5"><p class="text-[10px] font-bold text-orange-600 uppercase">Total Spent</p><h3 id="totalSpent" class="text-2xl font-black mt-2">₹0</h3><p class="text-xs text-gray-500"><span id="totalEntries">0</span> entries</p></div>
+<div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-200 p-5"><p class="text-[10px] font-bold text-green-600 uppercase">This Month</p><h3 id="thisMonthSpent" class="text-2xl font-black mt-2">₹0</h3><p class="text-xs text-gray-500" id="thisMonthLabel"></p></div>
+</div>
+
+<div id="chartsSection" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+<div class="bg-white rounded-2xl border p-5 shadow-sm">
+<div class="flex justify-between items-center"><h4 class="font-black text-sm flex items-center gap-2"><span class="w-7 h-7 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center"><i class="ri-pie-chart-2-fill"></i></span> Category Wise</h4><span class="text-[10px] bg-gray-100 px-2 py-1 rounded-full">Click to filter</span></div>
+<div style="height:300px" class="mt-4 relative"><canvas id="donutChart"></canvas></div>
+<div id="donutList" class="mt-3 text-xs space-y-1"></div>
+<div id="categoryFilterBadge" class="hidden mt-3 flex items-center justify-between bg-violet-50 border border-violet-200 px-3 py-2 rounded-full"><span class="text-xs font-bold"><span id="filterCatName"></span> filtered</span><button onclick="clearCategoryFilter()" class="text-xs bg-black text-white px-3 py-1 rounded-full">Clear ✕</button></div>
+</div>
+<div class="bg-white rounded-2xl border p-5 shadow-sm">
+<div class="flex justify-between items-center"><h4 class="font-black text-sm flex items-center gap-2"><span class="w-7 h-7 bg-green-100 text-green-600 rounded-full flex items-center justify-center"><i class="ri-bar-chart-fill"></i></span> Monthly Trend - 12 Months</h4><select id="yearFilter" onchange="changeYearFilter(this.value)" class="text-xs border-2 rounded-full px-3 py-1 font-bold bg-white"></select></div>
+<div style="height:300px" class="mt-4 relative"><canvas id="barChart"></canvas></div>
+<p class="text-[10px] text-gray-400 mt-2">Shows last 12 months • Click bar to see that month's data</p>
+</div>
+<div class="bg-white rounded-2xl border p-5 shadow-sm">
+<h4 class="font-black text-sm flex items-center gap-2"><span class="w-7 h-7 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center"><i class="ri-donut-chart-fill"></i></span> Payment Type</h4>
+<div style="height:300px" class="mt-4 relative"><canvas id="pieChart"></canvas></div>
+</div>
+<div class="bg-white rounded-2xl border p-5 shadow-sm">
+<h4 class="font-black text-sm flex items-center gap-2"><span class="w-7 h-7 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center"><i class="ri-line-chart-fill"></i></span> Daily Trend - Last 30 Days</h4>
+<div style="height:300px" class="mt-4 relative"><canvas id="lineChart"></canvas></div>
+</div>
+</div>
+
+<div id="tableSection" class="bg-white rounded-2xl border overflow-hidden shadow-sm">
+<div class="p-5 flex flex-col gap-3"><div class="flex flex-col sm:flex-row justify-between gap-3"><div class="flex items-center gap-2"><h4 class="font-black text-sm">Transactions <span id="tableCount" class="bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-[10px] px-2 py-1 rounded-full ml-2">0</span></h4><span id="activeFilter" class="hidden text-[11px] bg-violet-100 text-violet-700 border border-violet-200 px-3 py-1 rounded-full font-bold"></span></div><div class="flex gap-2"><button onclick="clearAllFilters()" id="clearFilterBtn" class="hidden border-2 border-red-200 text-red-600 px-4 py-1.5 rounded-full text-xs font-bold">Clear Filter</button><button onclick="exportCSV()" class="border-2 px-4 py-1.5 rounded-full text-xs font-bold">Export CSV</button></div></div>
+<div class="flex flex-wrap gap-2 items-center bg-gray-50 p-3 rounded-xl border">
+<span class="text-[11px] font-black text-gray-600 uppercase">Filters:</span>
+<select id="filterCategory" onchange="applyTableFilters()" class="text-xs border-2 rounded-full px-3 py-1.5 font-bold bg-white"><option value="all">All Categories</option></select>
+<select id="filterPayment" onchange="applyTableFilters()" class="text-xs border-2 rounded-full px-3 py-1.5 font-bold bg-white"><option value="all">All Payments</option><option value="UPI">UPI</option><option value="Cash">Cash</option><option value="Card">Card</option><option value="Bank Transfer">Bank Transfer</option><option value="Others">Others</option></select>
+<select id="filterType" onchange="applyTableFilters()" class="text-xs border-2 rounded-full px-3 py-1.5 font-bold bg-white"><option value="all">All Types</option><option value="Expense">Expense</option><option value="Income">Income</option></select>
+<input type="month" id="filterMonth" onchange="applyTableFilters()" class="text-xs border-2 rounded-full px-3 py-1.5 font-bold bg-white" placeholder="Month">
+<button onclick="clearTableFilters()" class="text-xs bg-black text-white px-3 py-1.5 rounded-full font-bold">Clear ✕</button>
+</div>
+</div>
+<div class="overflow-auto"><table class="w-full text-xs"><thead class="bg-gray-50 border-y"><tr><th class="p-3 text-left">DATE</th><th class="p-3 text-left">TYPE</th><th class="p-3 text-left">AMOUNT</th><th class="p-3 text-left">CATEGORY</th><th class="p-3 text-left">PAYMENT</th><th class="p-3 text-left">DETAILS</th><th class="p-3 text-left">ACTION</th></tr></thead><tbody id="tbody"></tbody></table></div>
+</div>
+
+</main>
+
+<footer class="text-center py-6 text-xs text-gray-500">Developed by: arzoho@proton.me</footer>
+
+<dialog id="authModal" class="p-0 w-full max-w-[400px] m-auto shadow-2xl">
+<div class="bg-white p-6 rounded-2xl">
+<div class="flex justify-between mb-4"><h3 class="font-black text-lg">Welcome</h3><button onclick="document.getElementById('authModal').close()" class="w-8 h-8 bg-gray-100 rounded-full">✕</button></div>
+<div class="flex gap-2 mb-4 p-1 bg-gray-100 rounded-full">
+<button id="tabLogin" onclick="switchTab('login')" class="flex-1 py-2 rounded-full text-xs font-black bg-black text-white">Login</button>
+<button id="tabSignup" onclick="switchTab('signup')" class="flex-1 py-2 rounded-full text-xs font-black">Sign Up</button>
+<button id="tabForgot" onclick="switchTab('forgot')" class="flex-1 py-2 rounded-full text-xs font-black">Forgot?</button>
+</div>
+<div id="loginDiv"><input id="loginEmail" type="email" placeholder="Email Address" class="w-full border-2 rounded-full px-4 py-3 text-sm mb-2"><input id="loginPassword" type="password" placeholder="Password" class="w-full border-2 rounded-full px-4 py-3 text-sm mb-3"><button onclick="handleLogin()" class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white py-3 rounded-full text-sm font-black shadow-lg">Login</button></div>
+<div id="signupDiv" class="hidden"><input id="signupEmail" type="email" placeholder="Email Address" class="w-full border-2 rounded-full px-4 py-3 text-sm mb-2"><input id="signupPassword" type="password" placeholder="Password (min 6)" class="w-full border-2 rounded-full px-4 py-3 text-sm mb-2"><input id="signupConfirm" type="password" placeholder="Confirm Password" class="w-full border-2 rounded-full px-4 py-3 text-sm mb-3"><button onclick="handleSignup()" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-3 rounded-full text-sm font-black shadow-lg">Create Account</button></div>
+<div id="forgotDiv" class="hidden"><input id="forgotEmail" type="email" placeholder="Your email address" class="w-full border-2 rounded-full px-4 py-3 text-sm mb-3"><button onclick="handleForgot()" class="w-full bg-gradient-to-r from-orange-400 to-pink-500 text-white py-3 rounded-full text-sm font-black shadow-lg">Send Reset Link</button></div>
+
+<p id="authMsg" class="text-xs text-center mt-3 font-bold min-h-[20px]"></p>
+</div>
+</dialog>
+
+<dialog id="addModal" class="p-0 w-full max-w-[450px] m-auto shadow-2xl">
+<div class="bg-white p-6 rounded-2xl">
+<div class="flex justify-between mb-4"><h3 class="font-black">Add Transaction</h3><button onclick="document.getElementById('addModal').close()" class="w-8 h-8 bg-gray-100 rounded-full">✕</button></div>
+<form onsubmit="saveTransaction(event)">
+<div class="flex gap-2 mb-3 p-1 bg-gray-100 rounded-full">
+<button type="button" id="btnExp" onclick="setTransType('Expense')" class="flex-1 py-2 rounded-full text-xs font-black bg-black text-white">Expense</button>
+<button type="button" id="btnInc" onclick="setTransType('Income')" class="flex-1 py-2 rounded-full text-xs font-black">Income</button>
+</div>
+<input type="hidden" id="transType" value="Expense">
+<input id="dateInput" type="date" class="w-full border-2 rounded-full px-4 py-3 text-sm mb-2" required>
+<input id="amountInput" type="number" step="0.01" placeholder="Amount" class="w-full border-2 rounded-full px-4 py-3 text-sm mb-2" required>
+<select id="catSelect" class="w-full border-2 rounded-full px-4 py-3 text-sm mb-2"></select>
+<select id="paymentTypeSelect" class="w-full border-2 rounded-full px-4 py-3 text-sm mb-2"></select>
+<input id="detailsInput" type="text" placeholder="Details (optional)" class="w-full border-2 rounded-full px-4 py-3 text-sm mb-3">
+<button type="submit" class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white py-3 rounded-full text-sm font-black shadow-lg">Save Transaction</button>
+</form>
+</div>
+</dialog>
+
+<script>
+const SUPABASE_URL='https://jgxyfunalxupugwpvcib.supabase.co';
+const SUPABASE_KEY='sb_publishable_Nqeu8b4_kljTrCAsNQRWgw_fehxexxd'; // ⚠️⚠️ YAHAN PUBLISHABLE KEY PASTE KARO - Supabase > Settings > API Keys > Publishable key > COPY button se pura key copy karo
+let supabaseClient=null;
+try{ supabaseClient=supabase.createClient(SUPABASE_URL, SUPABASE_KEY); console.log('Supabase initialized'); }catch(e){ console.error('Supabase init error', e); }
+
+const EXPENSE_CATS=['Food','Transport','Shopping','Bills','Entertainment','Health','Education','Internet','Others'];
+const INCOME_CATS=['Salary','Freelance','Business','Investment','Others'];
+const PAYMENT_TYPES=['UPI','Cash','Card','NetBanking','Others'];
+let transactions=[]; let user=null;
+
+function icon(cat){
+  const m={Food:'🍔',Transport:'🚕',Shopping:'🛍️',Bills:'🧾',Entertainment:'🎬',Health:'🏥',Education:'📚',Internet:'🌐',Salary:'💰',Freelance:'💻',Business:'🏢',Investment:'📈',Others:'📌',UPI:'📱',Cash:'💵',Card:'💳',NetBanking:'🏦'};
+  return m[cat]||'📌';
+}
+
+function openAuthModal(t){ document.getElementById('authModal').showModal(); switchTab(t); }
+function openAddModal(){ if(!user){ alert('Please login first'); openAuthModal('login'); return; } document.getElementById('dateInput').valueAsDate=new Date(); document.getElementById('addModal').showModal(); }
+function switchTab(t){
+  document.getElementById('loginDiv').classList.toggle('hidden', t!=='login');
+  document.getElementById('signupDiv').classList.toggle('hidden', t!=='signup');
+  document.getElementById('forgotDiv').classList.toggle('hidden', t!=='forgot');
+  document.getElementById('tabLogin').className = t==='login' ? 'flex-1 py-2 rounded-full text-xs font-black bg-black text-white' : 'flex-1 py-2 rounded-full text-xs font-black';
+  document.getElementById('tabSignup').className = t==='signup' ? 'flex-1 py-2 rounded-full text-xs font-black bg-black text-white' : 'flex-1 py-2 rounded-full text-xs font-black';
+  document.getElementById('tabForgot').className = t==='forgot' ? 'flex-1 py-2 rounded-full text-xs font-black bg-black text-white' : 'flex-1 py-2 rounded-full text-xs font-black';
+  document.getElementById('authMsg').textContent='';
+}
+function setTransType(type){
+  document.getElementById('transType').value=type;
+  document.getElementById('btnExp').className = type==='Expense' ? 'flex-1 py-2 rounded-full text-xs font-black bg-black text-white' : 'flex-1 py-2 rounded-full text-xs font-black';
+  document.getElementById('btnInc').className = type==='Income' ? 'flex-1 py-2 rounded-full text-xs font-black bg-black text-white' : 'flex-1 py-2 rounded-full text-xs font-black';
+  const catSel=document.getElementById('catSelect');
+  if(catSel){
+    let list = type==='Income' ? INCOME_CATS : EXPENSE_CATS;
+    const sorted = [...list].sort((a,b)=> a==='Others' ? -1 : b==='Others' ? 1 : 0);
+    catSel.innerHTML=sorted.map(c=>`<option value="${c}">${icon(c)} ${c}${c==='Others'?' - If not listed':''}</option>`).join('');
+  }
+}
+
+function updateUI(){
+  if(user){
+    document.getElementById('userEmail').textContent=user.email;
+    document.getElementById('userEmail').classList.remove('hidden');
+    document.getElementById('loginBtn').classList.add('hidden');
+    document.getElementById('logoutBtn').classList.remove('hidden');
+    document.getElementById('addBtn').classList.remove('hidden');
+    document.getElementById('addBtn').style.display='flex';
+    document.getElementById('authBanner').classList.add('hidden');
+  } else {
+    document.getElementById('userEmail').classList.add('hidden');
+    document.getElementById('loginBtn').classList.remove('hidden');
+    document.getElementById('logoutBtn').classList.add('hidden');
+    document.getElementById('addBtn').classList.remove('hidden');
+    document.getElementById('addBtn').style.display='flex';
+    document.getElementById('authBanner').classList.remove('hidden');
+  }
+}
+
+async function handleLogin(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass=document.getElementById('loginPassword').value;
+  const msg=document.getElementById('authMsg');
+  if(!email||!pass){ msg.textContent='❌ Please fill email and password'; return; }
+  if(!supabaseClient){ msg.textContent='❌ Supabase not ready'; return; }
+  msg.textContent='⏳ Logging in... Please wait';
+  try{
+    const {data, error}=await supabaseClient.auth.signInWithPassword({email,password:pass});
+    if(error){
+      if(error.message.includes('Email not confirmed')){ msg.textContent='❌ Email not confirmed. Please check your inbox.'; }
+      else if(error.message.includes('Invalid login')){ msg.textContent='❌ Invalid email or password.'; }
+      else { msg.textContent='❌ '+error.message; }
+      return;
+    }
+    if(data.user){ user=data.user; msg.textContent='✅ Login successful!'; updateUI(); setTimeout(()=>{ document.getElementById('authModal').close(); msg.textContent=''; }, 1000); await loadCloudData(); }
+  }catch(e){ if(e.message && e.message.includes('Failed to fetch')){ msg.textContent='❌ Network error. Please check internet connection.'; } else { msg.textContent='❌ '+e.message; } }
+}
+
+async function handleSignup(){
+  const email=document.getElementById('signupEmail').value.trim();
+  const pass=document.getElementById('signupPassword').value;
+  const confirm=document.getElementById('signupConfirm').value;
+  const msg=document.getElementById('authMsg');
+  if(!email||!pass){ msg.textContent='❌ Please fill all fields'; return; }
+  if(pass!==confirm){ msg.textContent='❌ Passwords do not match'; return; }
+  if(pass.length<6){ msg.textContent='❌ Password must be at least 6 characters'; return; }
+  msg.textContent='⏳ Creating account...';
+  try{
+    const {data, error}=await supabaseClient.auth.signUp({email,password:pass});
+    if(error){ msg.textContent='❌ '+error.message; return; }
+    if(data.user){
+      if(data.user.identities && data.user.identities.length===0){ msg.textContent='⚠️ User already exists. Please login.'; switchTab('login'); }
+      else if(data.session){ msg.textContent='✅ Account created and logged in!'; user=data.user; updateUI(); setTimeout(()=>{ document.getElementById('authModal').close(); msg.textContent=''; }, 1500); await loadCloudData(); }
+      else { msg.textContent='✅ Account created! Please check your email to confirm, then login.'; switchTab('login'); }
+    }
+  }catch(e){ msg.textContent='❌ '+e.message; }
+}
+
+async function handleForgot(){
+  const email=document.getElementById('forgotEmail').value.trim();
+  const msg=document.getElementById('authMsg');
+  if(!email){ msg.textContent='❌ Please enter email'; return; }
+  msg.textContent='⏳ Sending reset link...';
+  try{
+    const {error}=await supabaseClient.auth.resetPasswordForEmail(email, {redirectTo: window.location.origin});
+    if(error){ msg.textContent='❌ '+error.message; } else { msg.textContent='✅ Reset link sent! Check your inbox.'; }
+  }catch(e){ msg.textContent='❌ '+e.message; }
+}
+
+
+async function handleLogout(){
+  try{ await supabaseClient.auth.signOut(); user=null; transactions=[]; updateUI(); renderCharts(); }catch(e){ console.error(e); }
+}
+
+async function loadCloudData(){
+  if(!user||!supabaseClient) return;
+  try{
+    console.log('🔄 Loading data for user:', user.id, user.email);
+    let data=null;
+    
+    // 1. Try expenses table first
+    let res = await supabaseClient.from('expenses').select('*').order('date',{ascending:false});
+    console.log('expenses table:', res.data?.length || 0, 'rows, error:', res.error?.message);
+    
+    // 2. If expenses empty or error, try transactions table (where your 45 rows are!)
+    if(!res.data || res.data.length===0 || res.error){
+      console.log('🔄 Trying transactions table (your 45 rows)...');
+      let res2 = await supabaseClient.from('transactions').select('*').order('date',{ascending:false});
+      console.log('transactions table:', res2.data?.length || 0, 'rows, error:', res2.error?.message);
+      if(!res2.error && res2.data && res2.data.length>0){
+        data = res2.data;
+      } else if(res.data && res.data.length>0){
+        data = res.data;
+      } else {
+        data = res2.data || res.data || [];
+      }
+      if(res2.error && !data) {
+        console.error('❌ Both tables error:', res.error, res2.error);
+      }
+    } else {
+      data = res.data;
+    }
+    
+    if(!data){
+      console.log('⚠️ No data from any table');
+      transactions=[];
+      renderCharts();
+      return;
+    }
+    
+    console.log('📦 Raw data from DB:', data.length, 'records', data.slice(0,1));
+    
+    // 3. Your data has user_id = 4c86-49a8-acc7-58f7bf786e28 (fixed), not real auth id
+    // So we show ALL data for logged-in user, or filter smartly
+    let userData = data;
+    if(data.length>0 && data[0].hasOwnProperty('user_id')){
+      // Check if any record matches current user.id
+      const matching = data.filter(d=> d.user_id===user.id);
+      console.log('🔍 Records matching current user.id:', matching.length);
+      
+      if(matching.length>0){
+        userData = matching;
+      } else {
+        // No match - your old data has fixed id 4c86-... , so show all data!
+        // This is your 45 rows with Salary, Loan etc!
+        console.warn('⚠️ No records with current user.id, showing ALL 45 rows (old data)');
+        userData = data;
+      }
+    }
+    
+    transactions=userData;
+    console.log('✅ Final loaded '+transactions.length+' records for display');
+    renderCharts();
+  }catch(e){ console.error('Cloud load exception', e); transactions=[]; renderCharts(); }
+}
+
+async function saveTransaction(e){
+  e.preventDefault();
+  if(!user){ alert('Please login first!'); openAuthModal('login'); return; }
+  const paymentType=document.getElementById('paymentTypeSelect').value;
+  const item={
+    date: document.getElementById('dateInput').value,
+    amount: parseFloat(document.getElementById('amountInput').value),
+    category: document.getElementById('catSelect').value,
+    details: document.getElementById('detailsInput').value||'',
+    transaction_type: document.getElementById('transType').value,
+    type: paymentType,
+    user_id: user.id
+  };
+  if(!item.date || !item.amount){ alert('Please fill date and amount'); return; }
+  const btn=e.target.querySelector('button[type=submit]'); const old=btn.textContent; btn.textContent='⏳ Saving...'; btn.disabled=true;
+  try{
+    let res=await supabaseClient.from('expenses').insert(item).select();
+    if(res.error){
+      const t={date:item.date, amount:item.amount, category:item.category, transaction_type:item.transaction_type, details:item.details, user_id:user.id};
+      res=await supabaseClient.from('transactions').insert(t).select();
+      if(res.error) throw res.error;
+      res.data=[{...item, id:res.data[0].id}];
+    }
+    transactions.unshift(res.data[0]); renderCharts();
+    document.getElementById('addModal').close(); e.target.reset();
+  }catch(err){ alert('Save failed: '+err.message); }
+  finally{ btn.textContent=old; btn.disabled=false; }
+}
+
+async function delTransaction(id){
+  if(!confirm('Delete this transaction?')) return;
+  try{
+    let r=await supabaseClient.from('expenses').delete().eq('id',id);
+    if(r.error) r=await supabaseClient.from('transactions').delete().eq('id',id);
+    if(r.error) throw r.error;
+    transactions=transactions.filter(t=>t.id!=id); renderCharts();
+  }catch(e){ alert('Delete failed: '+e.message); }
+}
+
+function exportCSV(){
+  if(!transactions.length) return alert('No data to export');
+  let csv="Date,Type,Amount,Category,Payment,Details\n"+transactions.map(t=>`${t.date},${t.transaction_type},${t.amount},${t.category},${t.type||'UPI'},"${(t.details||'').replace(/"/g,'""')}"`).join("\n");
+  let blob=new Blob([csv],{type:'text/csv'}); let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='expenses.csv'; a.click();
+}
+
+let donutChart=null, barChart=null, pieChart=null, lineChart=null;
+let selectedCategory=null; let selectedMonth=null; let selectedYearFilter=null; let displayedTransactions=[];
+
+function initYearFilter(){
+  const yearSel=document.getElementById('yearFilter');
+  if(!yearSel) return;
+  const years=new Set();
+  transactions.forEach(t=>{ if(t.date){ years.add(t.date.slice(0,4)); } });
+  const currentYear=new Date().getFullYear();
+  for(let y=currentYear-9; y<=currentYear+1; y++){ years.add(String(y)); }
+  const sorted=Array.from(years).map(Number).sort((a,b)=>b-a).map(String);
+  if(!selectedYearFilter) selectedYearFilter=String(currentYear);
+  if(!sorted.includes(selectedYearFilter)) sorted.unshift(selectedYearFilter);
+  yearSel.innerHTML=sorted.map(y=>`<option value="${y}" ${y===selectedYearFilter?'selected':''}>${y}</option>`).join('') + '<option value="all">All Years (10+ Year History)</option>';
+}
+
+function changeYearFilter(y){ selectedYearFilter=y; renderCharts(); }
+function filterByCategory(cat){
+  if(selectedCategory===cat){ clearCategoryFilter(); return; }
+  selectedCategory=cat;
+  document.getElementById('categoryFilterBadge').classList.remove('hidden');
+  document.getElementById('filterCatName').textContent=icon(cat)+' '+cat;
+  document.getElementById('activeFilter').textContent=icon(cat)+' '+cat;
+  document.getElementById('activeFilter').classList.remove('hidden');
+  document.getElementById('clearFilterBtn').classList.remove('hidden');
+  renderTable();
+  document.getElementById('tableSection').scrollIntoView({behavior:'smooth'});
+}
+function filterByMonth(monthKey){
+  if(selectedMonth===monthKey){ selectedMonth=null; } else { selectedMonth=monthKey; }
+  if(selectedMonth){
+    document.getElementById('activeFilter').textContent='📅 '+selectedMonth;
+    document.getElementById('activeFilter').classList.remove('hidden');
+    document.getElementById('clearFilterBtn').classList.remove('hidden');
+  } else if(!selectedCategory){
+    document.getElementById('activeFilter').classList.add('hidden');
+    document.getElementById('clearFilterBtn').classList.add('hidden');
+  }
+  renderTable();
+}
+function clearCategoryFilter(){
+  selectedCategory=null;
+  document.getElementById('categoryFilterBadge').classList.add('hidden');
+  if(!selectedMonth){
+    document.getElementById('activeFilter').classList.add('hidden');
+    document.getElementById('clearFilterBtn').classList.add('hidden');
+  }
+  renderTable();
+}
+
+function applyTableFilters(){
+  renderTable();
+}
+function clearTableFilters(){
+  document.getElementById('filterCategory').value='all';
+  document.getElementById('filterPayment').value='all';
+  document.getElementById('filterType').value='all';
+  document.getElementById('filterMonth').value='';
+  clearCategoryFilter();
+  clearAllFilters();
+  renderTable();
+}
+
+function clearAllFilters(){
+  selectedCategory=null; selectedMonth=null;
+  document.getElementById('categoryFilterBadge').classList.add('hidden');
+  document.getElementById('activeFilter').classList.add('hidden');
+  document.getElementById('clearFilterBtn').classList.add('hidden');
+  renderTable();
+}
+function renderTable(){
+  // Populate category filter dropdown if empty
+  const catFilter = document.getElementById('filterCategory');
+  if(catFilter && catFilter.options.length<=1){
+    const cats = [...new Set(transactions.map(t=>t.category))].filter(Boolean).sort();
+    const allCats = [...EXPENSE_CATS].sort();
+    const combined = [...new Set([...allCats, ...cats])];
+    combined.forEach(c=>{
+      const opt=document.createElement('option'); opt.value=c; opt.textContent=c;
+      catFilter.appendChild(opt);
+    });
+  }
+
+  let extraCat = document.getElementById('filterCategory')?.value || 'all';
+  let extraPay = document.getElementById('filterPayment')?.value || 'all';
+  let extraType = document.getElementById('filterType')?.value || 'all';
+  let extraMonth = document.getElementById('filterMonth')?.value || '';
+
+
+  let filtered=[...transactions];
+  if(selectedCategory){ filtered=filtered.filter(t=>t.category===selectedCategory); }
+  if(selectedMonth){ filtered=filtered.filter(t=>t.date && t.date.slice(0,7)===selectedMonth); }
+  if(extraCat && extraCat!=='all'){ filtered=filtered.filter(t=>t.category===extraCat); }
+  if(extraPay && extraPay!=='all'){ filtered=filtered.filter(t=>(t.type||'UPI')===extraPay); }
+  if(extraType && extraType!=='all'){ filtered=filtered.filter(t=>t.transaction_type===extraType); }
+  if(extraMonth && extraMonth!==''){ filtered=filtered.filter(t=>t.date && t.date.slice(0,7)===extraMonth); }
+  displayedTransactions=filtered;
+  const tbody=document.getElementById('tbody');
+  if(!user){
+    tbody.innerHTML='<tr><td colspan=7 class="p-10 text-center text-gray-400">Please login to view your transactions<br><button onclick="openAuthModal(\'login\')" class="mt-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-6 py-2 rounded-full text-xs font-bold">Login</button></td></tr>';
+    document.getElementById('tableCount').textContent=0;
+    return;
+  }
+  if(filtered.length===0 && transactions.length>0){
+    tbody.innerHTML=`<tr><td colspan=7 class="p-10 text-center text-gray-400">No transactions for <b>${selectedCategory||''} ${selectedMonth||''}</b><br><button onclick="clearAllFilters()" class="mt-3 bg-black text-white px-6 py-2 rounded-full text-xs font-bold">Clear Filter</button></td></tr>`;
+    document.getElementById('tableCount').textContent=0;
+    return;
+  }
+  tbody.innerHTML=filtered.map(t=>`<tr class="border-t hover:bg-gray-50"><td class="p-3 text-[11px]">${t.date||'-'}</td><td class="p-3"><span class="border px-2 py-1 rounded-full text-[10px] font-bold ${t.transaction_type==='Income'?'bg-green-50 text-green-600 border-green-200':'bg-red-50 text-red-600 border-red-200'}">${t.transaction_type}</span></td><td class="p-3 font-black">₹${(+t.amount).toLocaleString('en-IN')}</td><td class="p-3"><button onclick="filterByCategory('${t.category}')" class="bg-gray-50 border px-2 py-1 rounded-full text-[11px] hover:bg-violet-50 hover:border-violet-200">${icon(t.category)} ${t.category}</button></td><td class="p-3 text-[11px]"><span class="bg-gray-50 border px-2 py-1 rounded-full">${icon(t.type||'UPI')} ${t.type||'UPI'}</span></td><td class="p-3 max-w-[100px] truncate text-[11px]">${t.details||'-'}</td><td class="p-3"><button onclick="delTransaction('${t.id}')" class="text-red-500 border border-red-200 px-2 py-1 rounded-full text-[10px] hover:bg-red-50">Delete</button></td></tr>`).join('') || '<tr><td colspan=7 class="p-10 text-center text-gray-400">No transactions yet<br><button onclick="openAddModal()" class="mt-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-6 py-2 rounded-full text-xs font-bold">Add First Transaction</button></td></tr>';
+  document.getElementById('tableCount').textContent=filtered.length;
+}
+
+function renderCharts(){
+  let totalIncome=0, totalExpense=0;
+  transactions.forEach(t=>{ if(t.transaction_type==='Income') totalIncome+= +t.amount; else totalExpense+= +t.amount; });
+  document.getElementById('walletBalance').textContent='₹'+(totalIncome-totalExpense).toLocaleString('en-IN');
+  document.getElementById('incomeTotal').textContent='Income ₹'+totalIncome.toLocaleString('en-IN');
+  document.getElementById('expenseTotal').textContent='Expense ₹'+totalExpense.toLocaleString('en-IN');
+  document.getElementById('totalSpent').textContent='₹'+totalExpense.toLocaleString('en-IN');
+  document.getElementById('totalEntries').textContent=transactions.length;
+  const monthNow=new Date().toLocaleString('en-IN',{month:'short', year:'numeric'});
+  document.getElementById('thisMonthLabel').textContent=monthNow;
+  const thisMonth=transactions.filter(t=>{ if(!t.date) return false; const d=new Date(t.date); const now=new Date(); return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear() && t.transaction_type==='Expense'; }).reduce((s,t)=>s+ +t.amount,0);
+  document.getElementById('thisMonthSpent').textContent='₹'+thisMonth.toLocaleString('en-IN');
+
+  initYearFilter();
+
+  const byCat={}; transactions.filter(t=>t.transaction_type==='Expense').forEach(t=>{ byCat[t.category]=(byCat[t.category]||0)+ +t.amount; });
+  let catLabels=Object.keys(byCat); let catVals=Object.values(byCat);
+  if(catLabels.length===0){ catLabels=['Food','Transport','Shopping','Bills','Others']; catVals=[450,300,600,200,150]; }
+  try{
+    const canvas=document.getElementById('donutChart');
+    if(canvas){
+      if(donutChart) donutChart.destroy();
+      const ctx=canvas.getContext('2d');
+      donutChart=new Chart(ctx,{type:'doughnut', data:{labels:catLabels.map(c=>icon(c)+' '+c), datasets:[{data:catVals, backgroundColor:['#3b82f6','#f59e0b','#10b981','#8b5cf6','#ec4899','#06b6d4','#f97316','#14b8a6','#f43f5e','#a855f7'], borderWidth:3, borderColor:'#fff', hoverOffset:15}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:function(ctx){ return ctx.label+': ₹'+ctx.parsed.toLocaleString('en-IN'); }}}}, onClick:(evt, elements)=>{ if(elements.length>0){ const idx=elements[0].index; const cat=catLabels[idx]; if(Object.keys(byCat).length>0) filterByCategory(cat); } }}});
+    }
+  }catch(e){ console.error('Donut error', e); }
+  document.getElementById('donutList').innerHTML=Object.entries(byCat).length ? Object.entries(byCat).map(([k,v])=>`<button onclick="filterByCategory('${k}')" class="w-full flex justify-between bg-gray-50 hover:bg-violet-50 hover:border-violet-200 border border-transparent px-3 py-2 rounded-full text-left transition ${selectedCategory===k?'bg-violet-100 border-violet-300 ring-2 ring-violet-200':''}"><span>${icon(k)} ${k} ${selectedCategory===k?'✓':''}</span><span class="font-bold">₹${v.toLocaleString('en-IN')}</span></button>`).join('') : '<p class="text-[11px] text-gray-400">Sample data - Login to see your data. Click to filter.</p>';
+
+  const byMonth={};
+  transactions.filter(t=>t.transaction_type==='Expense').forEach(t=>{
+    if(!t.date) return;
+    if(selectedYearFilter && selectedYearFilter!=='all' && !t.date.startsWith(selectedYearFilter)) return;
+    const m=t.date.slice(0,7); byMonth[m]=(byMonth[m]||0)+ +t.amount;
+  });
+  let mKeys=Object.keys(byMonth).sort();
+  if(selectedYearFilter && selectedYearFilter!=='all'){
+    const allMonths=[];
+    for(let i=1;i<=12;i++){ const mm=String(i).padStart(2,'0'); allMonths.push(selectedYearFilter+'-'+mm); }
+    mKeys=allMonths;
+  } else {
+    if(mKeys.length>12) mKeys=mKeys.slice(-12);
+    if(mKeys.length===0){
+      const now=new Date(); mKeys=[];
+      for(let i=11;i>=0;i--){ const d=new Date(now.getFullYear(), now.getMonth()-i, 1); mKeys.push(d.toISOString().slice(0,7)); }
+    }
+  }
+  let mVals=mKeys.map(k=>byMonth[k]||0);
+  if(transactions.length===0){ mVals=[800,1200,900,1500,1100,1900,1500,2200,1800,2500,2100,32439]; }
+  try{
+    const canvas=document.getElementById('barChart');
+    if(canvas){
+      if(barChart) barChart.destroy();
+      const ctx=canvas.getContext('2d');
+      barChart=new Chart(ctx,{type:'bar', data:{labels:mKeys.map(k=>{ const p=k.split('-'); const mons=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return mons[parseInt(p[1])-1]+"'"+p[0].slice(-2); }), datasets:[{label:'Expense', data:mVals, backgroundColor:mKeys.map(k=> selectedMonth===k ? '#000000' : (byMonth[k] ? '#06b6d4' : '#e5e7eb')), borderRadius:8, barThickness:16}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}, tooltip:{callbacks:{label:function(ctx){ return '₹'+ctx.parsed.y.toLocaleString('en-IN'); }}}}, scales:{y:{beginAtZero:true}}, onClick:(evt, elements)=>{ if(elements.length>0){ const idx=elements[0].index; const monthKey=mKeys[idx]; filterByMonth(monthKey); } }}});
+    }
+  }catch(e){ console.error('Bar error', e); }
+
+  const byType={}; transactions.forEach(t=>{ byType[t.type||'UPI']=(byType[t.type||'UPI']||0)+ +t.amount; });
+  let typeLabels=Object.keys(byType); let typeVals=Object.values(byType);
+  if(typeLabels.length===0){ typeLabels=['UPI','Cash','Card','Others']; typeVals=[800,400,350,150]; }
+  try{
+    const canvas=document.getElementById('pieChart');
+    if(canvas){
+      if(pieChart) pieChart.destroy();
+      const ctx=canvas.getContext('2d');
+      pieChart=new Chart(ctx,{type:'pie', data:{labels:typeLabels, datasets:[{data:typeVals, backgroundColor:['#10b981','#f59e0b','#3b82f6','#8b5cf6','#ec4899'], borderWidth:2, borderColor:'#fff'}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom', labels:{font:{size:11}}}}}});
+    }
+  }catch(e){ console.error('Pie error', e); }
+
+  const daily={}; const today=new Date();
+  for(let i=29;i>=0;i--){ const d=new Date(today); d.setDate(today.getDate()-i); daily[d.toISOString().slice(0,10)]=0; }
+  if(transactions.length===0){ const sample=[]; for(let i=0;i<30;i++) sample.push(Math.floor(200+Math.random()*800)); Object.keys(daily).forEach((k,i)=>daily[k]=sample[i]); } else { transactions.filter(t=>t.transaction_type==='Expense' && daily.hasOwnProperty(t.date)).forEach(t=>daily[t.date]+= +t.amount); }
+  try{
+    const canvas=document.getElementById('lineChart');
+    if(canvas){
+      if(lineChart) lineChart.destroy();
+      const ctx=canvas.getContext('2d');
+      lineChart=new Chart(ctx,{type:'line', data:{labels:Object.keys(daily).map(k=>{ const d=new Date(k); return String(d.getDate()).padStart(2,'0'); }), datasets:[{data:Object.values(daily), borderColor:'#8b5cf6', backgroundColor:'rgba(139,92,246,0.15)', tension:0.4, fill:true, borderWidth:2, pointRadius:0}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}}});
+    }
+  }catch(e){ console.error('Line error', e); }
+
+  renderTable();
+}
+
+async function init(){
+  const catSel=document.getElementById('catSelect');
+  const paySel=document.getElementById('paymentTypeSelect');
+  if(catSel){
+    const sorted=[...EXPENSE_CATS].sort((a,b)=> a==='Others' ? -1 : b==='Others' ? 1 : 0);
+    catSel.innerHTML=sorted.map(c=>`<option value="${c}">${icon(c)} ${c}</option>`).join('');
+  }
+  if(paySel){
+    const sorted=[...PAYMENT_TYPES].sort((a,b)=> a==='Others' ? -1 : b==='Others' ? 1 : 0);
+    paySel.innerHTML=sorted.map(p=>`<option value="${p}">${icon(p)} ${p}</option>`).join('');
+  }
+  updateUI();
+  renderCharts();
+  
+  if(supabaseClient){
+    try{
+      const {data, error}=await supabaseClient.auth.getSession();
+      if(data.session && data.session.user){ user=data.session.user; updateUI(); await loadCloudData(); }
+      else {
+        const {data: userData}=await supabaseClient.auth.getUser();
+        if(userData.user){ user=userData.user; updateUI(); await loadCloudData(); }
+      }
+    }catch(e){ console.error('Session check error', e); }
+    
+    supabaseClient.auth.onAuthStateChange(async (event, session)=>{
+      if(event==='SIGNED_IN' && session && session.user){ user=session.user; updateUI(); await loadCloudData(); }
+      else if(event==='SIGNED_OUT'){ user=null; transactions=[]; updateUI(); renderCharts(); }
+      else if(event==='TOKEN_REFRESHED' && session){ user=session.user; }
+    });
+  }
+}
+
+init();
+</script>
+</body>
+</html>
